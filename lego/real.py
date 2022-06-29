@@ -35,7 +35,8 @@ def makeMap(startPoint):
             corPlane[xPlace].append(0)
     #0 is nothing there, 1 is where we are
 
-    second = abs(startPoint[1]-y)
+    #second = abs(startPoint[1]-y)
+    second = startPoint[1]
     corPlane[second][startPoint[0]] = 1
 
 def turn(desiredAngle):
@@ -43,3 +44,23 @@ def turn(desiredAngle):
     change = desiredAngle - currentAng
     return change
 
+def findPosition():
+    global corPlane, tot
+    x = tot["x"]
+    y = tot["y"]
+    for xPlace in range(x):
+        for yPlace in range(y):
+            if corPlane[yPlace][xPlace] == 1:
+                return [xPlace,yPlace]
+
+#set in a [x,y]
+def calcDist(desiredPos,curPos):
+    #time for math(pythagrum theorum)
+    #remeber, order dosen't matter cause it will be positive
+    xPart = pow(desiredPos[0]-curPos[0],2)
+    yPart = pow(desiredPos[1]-curPos[1],2)
+    return sqrt(xPart+yPart)
+makeMap([1,4])
+curPos = findPosition()
+dist = calcDist([2,3],[1,4])
+print(dist)
