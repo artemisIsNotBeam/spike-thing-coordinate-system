@@ -39,11 +39,13 @@ def makeMap(startPoint):
     second = startPoint[1]
     corPlane[second][startPoint[0]] = 1
 
-def turn(desiredAngle):
+# find angle with 
+def findTurnturn(desiredAngle):
     currentAng = hub.motion_sensor.get_yaw_angle()
     change = desiredAngle - currentAng
     return change
 
+#for loops to find position
 def findPosition():
     global corPlane, tot
     x = tot["x"]
@@ -53,6 +55,33 @@ def findPosition():
             if corPlane[yPlace][xPlace] == 1:
                 return [xPlace,yPlace]
 
+# this sets the new 1 to pos and rest to zero
+def update(pos):
+    global corPlane, tot
+    x = tot["x"]
+    y = tot["y"]
+    for xPlace in range(x):
+        for yPlace in range(y):
+            if (xPlace ==pos[0] and yPlace==pos[1]):
+                corPlane[yPlace][xPlace] = 1
+            else:
+                corPlane[yPlace][xPlace] = 0
+
+def calcDist(desiredPos,curPos):
+    # distance formula math :(
+    xPart = pow(desiredPos[0]-curPos[0],2)
+    yPart = pow(desiredPos[1]-curPos[1],2)
+    return sqrt(xPart+yPart)
+
+def move(desiredPos):
+    # so basically you 
+    curPos = findPosition()
+    dist = calcDist(desiredPos,curPos)
+    # find the angle with complex yaw calculations
+    motorPair.move(dist,'in',steering = )
+    update(desiredPos)
+
+
 #set in a [x,y]
 def calcDist(desiredPos,curPos):
     #time for math(pythagrum theorum)
@@ -60,7 +89,13 @@ def calcDist(desiredPos,curPos):
     xPart = pow(desiredPos[0]-curPos[0],2)
     yPart = pow(desiredPos[1]-curPos[1],2)
     return sqrt(xPart+yPart)
+
+def findAng(desiredPos,curPos):
+    xPart = desiredPos[0]-curPos[0]
+    yPart = desiredPos[1]-curPos[1]
+    return math.tan(xPart/yPart)
+
 makeMap([1,4])
-curPos = findPosition()
-dist = calcDist([2,3],[1,4])
-print(dist)
+print(corPlane)
+update([3,3])
+print(corPlane)
