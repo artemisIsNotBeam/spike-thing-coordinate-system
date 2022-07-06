@@ -2,6 +2,7 @@ from spike import PrimeHub, LightMatrix, Button, StatusLight, ForceSensor, Motio
 from spike.control import wait_for_seconds, wait_until, Timer
 from math import *
 
+import sys
 hub = PrimeHub()
 
 hub.light_matrix.show_image('HAPPY')
@@ -77,8 +78,16 @@ def move(desiredPos):
     # so basically you 
     curPos = findPosition()
     dist = calcDist(desiredPos,curPos)
+    ang = findAng(desiredPos,curPos)
     # find the angle with complex yaw calculations
-    motorPair.move(dist,'in',steering = )
+    # motorPair.move()
+    """
+    negative is left, pos is to the right
+
+    steering has nothing to do with the angle
+
+    instead we should use a turn of both motors and then 
+    """
     update(desiredPos)
 
 
@@ -99,3 +108,5 @@ makeMap([1,4])
 print(corPlane)
 update([3,3])
 print(corPlane)
+
+sys.exit()
