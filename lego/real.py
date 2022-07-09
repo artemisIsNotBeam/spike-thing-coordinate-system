@@ -5,18 +5,19 @@ from math import *
 import sys
 hub = PrimeHub()
 
+
+lightSensor = PrimeHub.PORT_D
+arm = PrimeHub.PORT_F
+leftMotor = Motor("C")
+rightMotor = Motor("B")
+motorPair = MotorPair('C','B')
+
 hub.light_matrix.show_image('HAPPY')
 corPlane = []
 tot = {"x": 6, "y": 6}
 # make sure tot and scale factor work toghther
-scaleFactor = 1
-
-
-lightSensor = PrimeHub.PORT_D
-arm = PrimeHub.PORT_F
-leftMotor = PrimeHub.PORT_B
-rightMotor = PrimeHub.PORT_C
-motorPair = MotorPair('B','C')
+scaleFactor = 18
+unit = "in"
 
 hub.motion_sensor.reset_yaw_angle()
 # hub.motion_sensor.get_yaw_angle() is how to find 
@@ -76,11 +77,21 @@ def calcDist(desiredPos,curPos):
 
 def move(desiredPos):
     # so basically you 
+    global motorPair, unit
     curPos = findPosition()
     dist = calcDist(desiredPos,curPos)
     ang = findAng(desiredPos,curPos)
+    ang = findTurnturn(ang)
     # find the angle with complex yaw calculations
     # motorPair.move()
+
+    print("angle "+str(ang))
+    print("dist "+str(dist))
+    
+    turn(ang)
+    #NOTE: YOU CAN'T TURN 180 degerees with with turn, just break up 
+    # the turn with smaller turns
+    motorPair.move(dist,unit=unit,steering=0, speed=50)
     """
     negative is left, pos is to the right
 
@@ -100,13 +111,33 @@ def calcDist(desiredPos,curPos):
     return sqrt(xPart+yPart)
 
 def findAng(desiredPos,curPos):
-    xPart = desiredPos[0]-curPos[0]
-    yPart = desiredPos[1]-curPos[1]
-    return math.tan(xPart/yPart)
+    xPart = (desiredPos[0]-curPos[0]) * scaleFactor
+    yPart = (desiredPos[1]-curPos[1]) * scaleFactor
 
-makeMap([1,4])
-print(corPlane)
-update([3,3])
-print(corPlane)
+    print("x "+str(xPart)+"y " +str(yPart))
+    #x would be adjacent, y would be opposite
+    return degrees(atan(yPart/xPart))
 
-sys.exit()
+def turn(Ang):
+    # need rounded because dosen't return fakes
+    global hub,leftMotor,rightMotor
+    desiredModAng = hub.motion_sensor.get_yaw_angle() + Ang
+    desiredModAng = round(desiredModAng)
+    print(desiredModAng)
+
+    leftMotor.start_at_power(30)
+    rightMotor.start_at_power(30)
+
+    shouldGo = True
+    while shouldGo == True:
+        curAng = hub.motion_sensor.get_yaw_angle()
+        if curAng == desiredModAng:
+            print("im done ayayayyayayay")
+            break
+    leftMotor.stop()
+    rightMotor.stop()
+
+
+#BIG NOTE: don't make yourself do a 180 it will freeze/ break the robot
+makeMap([1,0])
+print(corPlane)
