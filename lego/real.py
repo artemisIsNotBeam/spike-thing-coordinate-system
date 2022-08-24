@@ -2,25 +2,25 @@ from spike import PrimeHub, LightMatrix, Button, StatusLight, ForceSensor, Motio
 from spike.control import wait_for_seconds, wait_until, Timer
 from math import *
 
-import sys
+
 hub = PrimeHub()
 
 
 lightSensor = PrimeHub.PORT_D
 arm = PrimeHub.PORT_F
-leftMotor = Motor("C")
-rightMotor = Motor("B")
+leftMotor = Motor("B")
+rightMotor = Motor("C")
 motorPair = MotorPair('C','B')
 
 hub.light_matrix.show_image('HAPPY')
 corPlane = []
-tot = {"x": 6, "y": 6}
-# make sure tot and scale factor work toghther
-scaleFactor = 18
-unit = "in"
 
+
+# Height is 39 inches and 80 inches wide
+tot = {"x": 40, "y": 20}
+
+unit = "in"
 hub.motion_sensor.reset_yaw_angle()
-# hub.motion_sensor.get_yaw_angle() is how to find 
 
 
 
@@ -31,20 +31,23 @@ def makeMap(startPoint):
     x = tot["x"]
     y = tot["y"]
     # fill out the corPlane
-    for xPlace in range(x):
-        corPlane.append([])
-        for yPlace in range(y):
-            corPlane[xPlace].append(0)
+    for yPlace in range(y):
+        tempList = []
+        for xPlace in range(x):
+            tempList.append(0)
+        corPlane.append(tempList)
+        
     #0 is nothing there, 1 is where we are
 
     #second = abs(startPoint[1]-y)
-    second = startPoint[1]
-    corPlane[second][startPoint[0]] = 1
+    second = startPoint[1] -1
+    first = startPoint[0] - 1
+    corPlane[second][first] = 1
 
 # find angle with 
 def findTurnturn(desiredAngle):
     currentAng = hub.motion_sensor.get_yaw_angle()
-    change = desiredAngle - currentAng
+    change = currentAng - desiredAngle
     return change
 
 #for loops to find position
@@ -52,22 +55,35 @@ def findPosition():
     global corPlane, tot
     x = tot["x"]
     y = tot["y"]
-    for xPlace in range(x):
-        for yPlace in range(y):
+
+    for yPlace in range(y):
+        for xPlace in range(x):
             if corPlane[yPlace][xPlace] == 1:
                 return [xPlace,yPlace]
+                print("I found it")
+    
 
 # this sets the new 1 to pos and rest to zero
 def update(pos):
     global corPlane, tot
     x = tot["x"]
     y = tot["y"]
+
+    tempList = []
+
+    curPos = findPosition()
     for xPlace in range(x):
         for yPlace in range(y):
-            if (xPlace ==pos[0] and yPlace==pos[1]):
-                corPlane[yPlace][xPlace] = 1
-            else:
-                corPlane[yPlace][xPlace] = 0
+            if curPos[0] == xPlace and curPos[1] == yPlace:
+                corPlane[xPlace][yPlace] = 0
+                
+    for newx in range(x):
+        if pos[0] == newx:
+            tempList.append(1)
+        else:
+            tempList.append(0)
+    corPlane[pos[1]] = tempList
+
 
 def calcDist(desiredPos,curPos):
     # distance formula math :(
@@ -75,28 +91,23 @@ def calcDist(desiredPos,curPos):
     yPart = pow(desiredPos[1]-curPos[1],2)
     return sqrt(xPart+yPart)
 
-def move(desiredPos):
+def move(desiredPos, quad):
     # so basically you 
     global motorPair, unit
     curPos = findPosition()
     dist = calcDist(desiredPos,curPos)
-    ang = findAng(desiredPos,curPos)
-    ang = findTurnturn(ang)
+    ang = findAng(desiredPos,curPos, quad)
+    #ang = findTurnturn(ang)
     # find the angle with complex yaw calculations
     # motorPair.move()
-
-    print("angle "+str(ang))
-    print("dist "+str(dist))
-    
     turn(ang)
-    #NOTE: YOU CAN'T TURN 180 degerees with with turn, just break up 
+    #NOTE: YOU CAN'T TURN 180 degerees with with turn, it will just break up 
     # the turn with smaller turns
-    motorPair.move(dist,unit=unit,steering=0, speed=50)
+    print("distance"+ str(dist))
+    motorPair.move( (-1 * dist),unit=unit,steering=0, speed=50)
     """
     negative is left, pos is to the right
-
     steering has nothing to do with the angle
-
     instead we should use a turn of both motors and then 
     """
     update(desiredPos)
@@ -106,24 +117,54 @@ def move(desiredPos):
 def calcDist(desiredPos,curPos):
     #time for math(pythagrum theorum)
     #remeber, order dosen't matter cause it will be positive
-    xPart = pow(desiredPos[0]-curPos[0],2)
-    yPart = pow(desiredPos[1]-curPos[1],2)
+
+    print(desiredPos, curPos)
+    xPart = pow(desiredPos[0]-curPos[0],2) 
+    yPart = pow(desiredPos[1]-curPos[1],2) 
     return sqrt(xPart+yPart)
 
-def findAng(desiredPos,curPos):
-    xPart = (desiredPos[0]-curPos[0]) * scaleFactor
-    yPart = (desiredPos[1]-curPos[1]) * scaleFactor
+def findAng(desiredPos,curPos,quad):
+    xPart = (desiredPos[0]-curPos[0]) 
+    yPart = (desiredPos[1]-curPos[1]) 
 
-    print("x "+str(xPart)+"y " +str(yPart))
+
+    print(curPos)
+    if xPart == 0:
+        print("zero angle smh")
+        return 0
+
+    if yPart == 0:
+        print("its zero")
+        return 0
+    noApply = degrees(atan(xPart / yPart))
+
+    if quad == 2:
+        noApply += 90
+    if quad == 3:
+        noApply *= -1
+        noApply -= 90
+    if quad == 4:
+        noApply *= -1
     #x would be adjacent, y would be opposite
-    return degrees(atan(yPart/xPart))
+    print("angle:" + str(noApply))
+    return noApply
 
 def turn(Ang):
     # need rounded because dosen't return fakes
     global hub,leftMotor,rightMotor
-    desiredModAng = hub.motion_sensor.get_yaw_angle() + Ang
+    desiredModAng = Ang
+    #desiredModAng = hub.motion_sensor.get_yaw_angle() + Ang
+
     desiredModAng = round(desiredModAng)
-    print(desiredModAng)
+    
+    if desiredModAng == 180:
+        print("180 degree bruh")
+        turn(90)
+        turn(90)
+        pass
+    if desiredModAng == 0:
+        pass
+
 
     leftMotor.start_at_power(30)
     rightMotor.start_at_power(30)
@@ -132,12 +173,18 @@ def turn(Ang):
     while shouldGo == True:
         curAng = hub.motion_sensor.get_yaw_angle()
         if curAng == desiredModAng:
-            print("im done ayayayyayayay")
+            
             break
     leftMotor.stop()
     rightMotor.stop()
 
 
 #BIG NOTE: don't make yourself do a 180 it will freeze/ break the robot
-makeMap([1,0])
-print(corPlane)
+
+
+makeMap([1,1])
+print("--------------------------------")
+move([7,5],1)
+print("--------------------------------")
+
+
